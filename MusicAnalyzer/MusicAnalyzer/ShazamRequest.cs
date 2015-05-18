@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace shazam
-{
-    public struct ShazamRequest
-    {
+﻿namespace MusicAnalyzer {
+    public struct ShazamRequest {
         public string hostname;
 
         public string deviceid;

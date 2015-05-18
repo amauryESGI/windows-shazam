@@ -1,9 +1,12 @@
-﻿namespace MusicAnalyzer {
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+
+namespace MusicAnalyzer {
     partial class MainForm {
         /// <summary>
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary>
         /// Clean up any resources being used.
@@ -100,12 +103,12 @@
 
         #endregion
 
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.Label statusLabel;
-        private System.Windows.Forms.Timer timer;
-        private System.Windows.Forms.Timer recordTimer;
-        private System.Windows.Forms.ProgressBar progressBar1;
-        private System.Windows.Forms.Label label1;
+        private Button button1;
+        private Label statusLabel;
+        private Timer timer;
+        private Timer recordTimer;
+        private ProgressBar progressBar1;
+        private Label label1;
     }
 }
 

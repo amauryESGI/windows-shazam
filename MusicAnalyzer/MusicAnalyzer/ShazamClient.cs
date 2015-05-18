@@ -1,85 +1,81 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
-using System.IO;
-using System.Threading;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
+using System.Net;
+using System.Threading;
+using System.Xml.Linq;
+using SharedCoreLib.Models.VO;
 using SharedCoreLib.Services.ShazamAPI;
 using SharedCoreLib.Services.ShazamAPI.Responses;
-using System.Xml.Linq;
 using SharedCoreLib.Utils.XML;
-using SharedCoreLib.Models.VO;
 
 namespace MusicAnalyzer {
-    public partial class ShazamClient {
-        public static string kDoRecognitionURL = @"http://msft.shazamid.com/orbit/DoRecognition1";
-        public static string kRequestResultsURL = @"http://msft.shazamid.com/orbit/RequestResults1";
+    public class ShazamClient {
+        public static string KDoRecognitionUrl = @"http://msft.shazamid.com/orbit/DoRecognition1";
+        public static string KRequestResultsUrl = @"http://msft.shazamid.com/orbit/RequestResults1";
 
-        public ShazamClient() {
-
-        }
-
-        private IceKey encryptKey = new IceKey(1);
-        private ShazamRequest shazamRequest;
+        private IceKey _encryptKey = new IceKey(1);
+        private ShazamRequest _shazamRequest;
         public event ShazamStateChangedCallback OnRecongnitionStateChanged;
-        public string deviceID { private get; set; }
+        public string DeviceID { private get; set; }
 
         public int DoRecognition(byte[] audioBuffer, MicrophoneRecordingOutputFormatType formatType) {
-            shazamRequest = new ShazamRequest();
+            _shazamRequest = new ShazamRequest();
             ShazamAPIConfig shazamAPIConfig = new ShazamAPIConfig();
             shazamAPIConfig.initKey("20FB1BCBE2C4848F");
             Console.WriteLine(shazamAPIConfig.key);
-            shazamRequest.token = "B540AD35";
-            shazamRequest.key = shazamAPIConfig.key;
-            shazamRequest.audioBuffer = audioBuffer;
-            shazamRequest.deviceid = "00000000-0000-0000-0000-000000000000";    // It works
-            shazamRequest.service = "cn=US,cn=V12,cn=SmartClub,cn=ShazamiD,cn=services";
-            shazamRequest.language = "en-US";
-            shazamRequest.model = "Microsoft Windows";
-            shazamRequest.appid = "ShazamId_SmartPhone_Tau__1.3.0";
+            _shazamRequest.Token = "B540AD35";
+            _shazamRequest.Key = shazamAPIConfig.key;
+            _shazamRequest.AudioBuffer = audioBuffer;
+            _shazamRequest.Deviceid = "00000000-0000-0000-0000-000000000000";    // It works
+            _shazamRequest.Service = "cn=US,cn=V12,cn=SmartClub,cn=ShazamiD,cn=services";
+            _shazamRequest.Language = "en-US";
+            _shazamRequest.Model = "Microsoft Windows";
+            _shazamRequest.Appid = "ShazamId_SmartPhone_Tau__1.3.0";
 
-            if (deviceID != null && deviceID != "")
-                shazamRequest.deviceid = deviceID;
+            if (!string.IsNullOrEmpty(DeviceID))
+                _shazamRequest.Deviceid = DeviceID;
 
             switch (formatType) {
                 case MicrophoneRecordingOutputFormatType.PCM: {
-                        shazamRequest.filename = "sample.wav";
+                        _shazamRequest.Filename = "sample.wav";
                         break;
                     }
                 case MicrophoneRecordingOutputFormatType.MP3: {
-                        shazamRequest.filename = "sample.mp3";
+                        _shazamRequest.Filename = "sample.mp3";
                         break;
                     }
                 case MicrophoneRecordingOutputFormatType.SIG: {
-                        shazamRequest.filename = "sample.sig";
+                        _shazamRequest.Filename = "sample.sig";
                         break;
                     }
             }
 
-            ShazamRequest request = shazamRequest;
+            ShazamRequest request = _shazamRequest;
 
             try {
                 RaiseOnRecongnitionStateChanged(ShazamRecognitionState.Sending, null);
-                byte[] audio = request.audioBuffer;
+                byte[] audio = request.AudioBuffer;
                 string audioLength = audio.Length.ToString();
                 string tagDate = DateTime.Now.ToUniversalTime().ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss");
-                OrbitPostRequestBuilder orbitPostRequestBuilder = new OrbitPostRequestBuilder(encryptKey, request.key);
-                orbitPostRequestBuilder.AddEncryptedParameter("cryptToken", request.token);
-                orbitPostRequestBuilder.AddEncryptedParameter("deviceId", request.deviceid);
-                orbitPostRequestBuilder.AddParameter("service", request.service);
-                orbitPostRequestBuilder.AddParameter("language", request.language);
-                orbitPostRequestBuilder.AddEncryptedParameter("deviceModel", request.model);
-                orbitPostRequestBuilder.AddEncryptedParameter("applicationIdentifier", request.appid);
+                OrbitPostRequestBuilder orbitPostRequestBuilder = new OrbitPostRequestBuilder(_encryptKey, request.Key);
+                orbitPostRequestBuilder.AddEncryptedParameter("cryptToken", request.Token);
+                orbitPostRequestBuilder.AddEncryptedParameter("deviceId", request.Deviceid);
+                orbitPostRequestBuilder.AddParameter("service", request.Service);
+                orbitPostRequestBuilder.AddParameter("language", request.Language);
+                orbitPostRequestBuilder.AddEncryptedParameter("deviceModel", request.Model);
+                orbitPostRequestBuilder.AddEncryptedParameter("applicationIdentifier", request.Appid);
                 orbitPostRequestBuilder.AddEncryptedParameter("tagDate", tagDate);
                 orbitPostRequestBuilder.AddEncryptedParameter("sampleBytes", audioLength);
-                orbitPostRequestBuilder.AddEncryptedFile("sample", request.filename, audio, audio.Length);
-                WebRequest webRequest = WebRequest.Create(kDoRecognitionURL);
+                orbitPostRequestBuilder.AddEncryptedFile("sample", request.Filename, audio, audio.Length);
+                WebRequest webRequest = WebRequest.Create(KDoRecognitionUrl);
                 orbitPostRequestBuilder.PopulateWebRequestHeaders(webRequest);
-                doTimeoutRequest(new RequestContext {
+                DoTimeoutRequest(new RequestContext {
                     WebRequest = webRequest,
                     RequestBuilder = orbitPostRequestBuilder
-                }, new AsyncCallback(RecognitionReadCallback), 30000);
+                }, RecognitionReadCallback, 30000);
             } catch (Exception e) {
                 RecognitionFailed(e);
             }
@@ -89,25 +85,28 @@ namespace MusicAnalyzer {
         private void DoGetResult(ulong requestId) {
             try {
                 RaiseOnRecongnitionStateChanged(ShazamRecognitionState.Matching, null);
-                shazamRequest.requestId = requestId;
-                shazamRequest.art_width = 520;
-                ShazamRequest request = shazamRequest;
-                string str = request.requestId.ToString();
-                OrbitPostRequestBuilder orbitPostRequestBuilder = new OrbitPostRequestBuilder(encryptKey, request.key);
-                orbitPostRequestBuilder.AddEncryptedParameter("cryptToken", request.token);
-                orbitPostRequestBuilder.AddEncryptedParameter("deviceId", request.deviceid);
-                orbitPostRequestBuilder.AddParameter("service", request.service);
-                orbitPostRequestBuilder.AddParameter("language", request.language);
-                orbitPostRequestBuilder.AddEncryptedParameter("deviceModel", request.model);
-                orbitPostRequestBuilder.AddEncryptedParameter("applicationIdentifier", request.appid);
-                orbitPostRequestBuilder.AddEncryptedParameter("coverartSize", request.art_width.ToString());
+                _shazamRequest.RequestId = requestId;
+                _shazamRequest.ArtWidth = 520;
+                ShazamRequest request = _shazamRequest;
+                string str = request.RequestId.ToString();
+                OrbitPostRequestBuilder orbitPostRequestBuilder = new OrbitPostRequestBuilder(_encryptKey, request.Key);
+                orbitPostRequestBuilder.AddEncryptedParameter("cryptToken", request.Token);
+                orbitPostRequestBuilder.AddEncryptedParameter("deviceId", request.Deviceid);
+                orbitPostRequestBuilder.AddParameter("service", request.Service);
+                orbitPostRequestBuilder.AddParameter("language", request.Language);
+                orbitPostRequestBuilder.AddEncryptedParameter("deviceModel", request.Model);
+                orbitPostRequestBuilder.AddEncryptedParameter("applicationIdentifier", request.Appid);
+                orbitPostRequestBuilder.AddEncryptedParameter("coverartSize", request.ArtWidth.ToString());
                 orbitPostRequestBuilder.AddEncryptedParameter("requestId", str);
-                WebRequest webRequest = WebRequest.Create(kRequestResultsURL);
+                WebRequest webRequest = WebRequest.Create(KRequestResultsUrl);
                 orbitPostRequestBuilder.PopulateWebRequestHeaders(webRequest);
-                RequestContext requestContext = new RequestContext();
-                requestContext.WebRequest = webRequest;
-                requestContext.RequestBuilder = orbitPostRequestBuilder;
-                doTimeoutRequest(requestContext, new AsyncCallback(ResultReadCallback), 30000);
+                RequestContext requestContext = new RequestContext
+                {
+                    WebRequest = webRequest,
+                    RequestBuilder = orbitPostRequestBuilder
+                };
+
+                DoTimeoutRequest(requestContext, ResultReadCallback, 30000);
 
             } catch (Exception e) {
                 RecognitionFailed(e);
@@ -115,7 +114,6 @@ namespace MusicAnalyzer {
         }
 
         private void RecognitionReadCallback(IAsyncResult asynchronousResult) {
-            RecognitionShazamResponse recognitionShazamResponse = null;
             try {
                 RequestContext asyncState = (RequestContext)asynchronousResult.AsyncState;
                 HttpWebRequest webRequest = (HttpWebRequest)asyncState.WebRequest;
@@ -129,8 +127,8 @@ namespace MusicAnalyzer {
                     }
                 }
 
-                recognitionShazamResponse = ParseResponseForDoRecognition(responseString);
-                if (recognitionShazamResponse.errorMessage != "" && recognitionShazamResponse.errorMessage != null) {
+                var recognitionShazamResponse = ParseResponseForDoRecognition(responseString);
+                if (!string.IsNullOrEmpty(recognitionShazamResponse.errorMessage)) {
                     throw new Exception(recognitionShazamResponse.errorMessage);
                 }
                 DoGetResult(recognitionShazamResponse.requestId);
@@ -154,7 +152,7 @@ namespace MusicAnalyzer {
                 }
 
                 resultShazamResponse = ParseResponseForRequestResults(responseString);
-                if (resultShazamResponse.errorMessage != "" && resultShazamResponse.errorMessage != null) {
+                if (!string.IsNullOrEmpty(resultShazamResponse.errorMessage)) {
                     throw new Exception(resultShazamResponse.errorMessage);
                 }
                 RaiseOnRecongnitionStateChanged(ShazamRecognitionState.Done, new ShazamResponse(resultShazamResponse));
@@ -164,9 +162,9 @@ namespace MusicAnalyzer {
             }
         }
 
-        private void RaiseOnRecongnitionStateChanged(ShazamRecognitionState State, ShazamResponse Response) {
+        private void RaiseOnRecongnitionStateChanged(ShazamRecognitionState state, ShazamResponse response) {
             if (OnRecongnitionStateChanged != null)
-                RaiseEventOnUIThread(OnRecongnitionStateChanged, new Object[] { State, Response });
+                RaiseEventOnUIThread(OnRecongnitionStateChanged, new Object[] { state, response });
         }
 
         private void RecognitionFailed(Exception e) {
@@ -246,10 +244,10 @@ namespace MusicAnalyzer {
             return recognitionShazamResponse;
         }
 
-        private bool doTimeoutRequest(RequestContext requestContext, AsyncCallback callback, int millisecondsTimeout) {
+        private bool DoTimeoutRequest(RequestContext requestContext, AsyncCallback callback, int millisecondsTimeout) {
             try {
                 bool flag = false;
-                System.Threading.Timer timer = null;
+                Timer timer = null;
                 TimerCallback timerCallback = null;
                 timerCallback = (object state) => {
                     lock (timer) {
@@ -281,7 +279,7 @@ namespace MusicAnalyzer {
                     requestContext.WebRequest.BeginGetRequestStream(asyncCallback1, requestContext);
 
                 }
-                timer = new System.Threading.Timer(timerCallback, null, millisecondsTimeout, -1);
+                timer = new Timer(timerCallback, null, millisecondsTimeout, -1);
             } catch (Exception exception) {
                 throw new IOException(string.Empty, exception);
             }
@@ -289,9 +287,12 @@ namespace MusicAnalyzer {
         }
 
         private TrackVO ParseXmlElementForTrackData(XNamespace xNamespace, XElement trackElem, bool fromList = false) {
-            TrackVO trackVO = new TrackVO();
-            trackVO.Id = Convert.ToInt32(trackElem.Attribute("id").Value);
-            trackVO.Title = trackElem.GetElementIgnoreNamespace(xNamespace, "ttitle").Value;
+            TrackVO trackVO = new TrackVO
+            {
+                Id = Convert.ToInt32(trackElem.Attribute("id").Value),
+                Title = trackElem.GetElementIgnoreNamespace(xNamespace, "ttitle").Value
+            };
+
             XElement elementIgnoreNamespace = trackElem.GetElementIgnoreNamespace(xNamespace, "tartists");
             if (elementIgnoreNamespace != null) {
                 XElement xElement = elementIgnoreNamespace.GetElementIgnoreNamespace(xNamespace, "tartist");
@@ -401,8 +402,7 @@ namespace MusicAnalyzer {
                             }
                         }
                         addOnVO.AssociateOwnerTrack(trackVO);
-                        trackVO.AddOns = new List<AddOnVO>();
-                        trackVO.AddOns.Add(addOnVO);
+                        trackVO.AddOns = new List<AddOnVO> { addOnVO };
                     } else {
                         XElement elementIgnoreNamespace6 = xElement3.GetElementIgnoreNamespace(xNamespace, "actions");
                         if (elementIgnoreNamespace6 == null) {
@@ -432,11 +432,11 @@ namespace MusicAnalyzer {
 
         public ShazamResponse(ResultShazamResponse result) {
             if (result.newTag != null)
-                this.Tag = result.newTag;
+                Tag = result.newTag;
         }
 
         public ShazamResponse(Exception exception) {
-            this.Exception = exception;
+            Exception = exception;
         }
     }
 
@@ -453,5 +453,5 @@ namespace MusicAnalyzer {
         Failed
     }
 
-    public delegate void ShazamStateChangedCallback(ShazamRecognitionState State, ShazamResponse Response);
+    public delegate void ShazamStateChangedCallback(ShazamRecognitionState state, ShazamResponse response);
 }

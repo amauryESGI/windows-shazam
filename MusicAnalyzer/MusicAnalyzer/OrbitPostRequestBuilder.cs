@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Text;
 using System.IO;
 using System.Net;
+using System.Text;
 
 namespace MusicAnalyzer {
     public class OrbitPostRequestBuilder : IRequestBuilder {
-        private MemoryStream requestDataStream = new MemoryStream();
+        private MemoryStream _requestDataStream = new MemoryStream();
 
         private string Boundary {
             get;
@@ -23,43 +23,43 @@ namespace MusicAnalyzer {
         }
 
         public OrbitPostRequestBuilder(IceKey encryptor, char[] key) {
-            this.Encryptor = encryptor;
-            this.Key = key;
-            this.Boundary = "AJ8xP50454bf20Gp";
+            Encryptor = encryptor;
+            Key = key;
+            Boundary = "AJ8xP50454bf20Gp";
         }
 
         public void AddEncryptedFile(string name, string fileName, byte[] fileData, int fileSize) {
-            this.Encryptor.set(this.Key);
-            byte[] numArray = this.Encryptor.encBinary(fileData, fileSize);
-            this.AddFile(name, fileName, numArray, (int)numArray.Length);
+            Encryptor.Set(Key);
+            byte[] numArray = Encryptor.EncBinary(fileData, fileSize);
+            AddFile(name, fileName, numArray, numArray.Length);
         }
 
         public void AddEncryptedParameter(string name, string value) {
-            this.Encryptor.set(this.Key);
-            char[] chrArray = this.Encryptor.encString(value);
-            this.AddParameter(name, new string(chrArray));
+            Encryptor.Set(Key);
+            char[] chrArray = Encryptor.EncString(value);
+            AddParameter(name, new string(chrArray));
         }
 
         public void AddFile(string name, string fileName, byte[] fileData, int fileSize) {
-            string[] newLine = new string[] { "--{0}", Environment.NewLine, "Content-Disposition: form-data; name=\"{1}\"; filename=\"{2}\"", Environment.NewLine, "Content-Type: {3}", Environment.NewLine, Environment.NewLine };
+            string[] newLine = { "--{0}", Environment.NewLine, "Content-Disposition: form-data; name=\"{1}\"; filename=\"{2}\"", Environment.NewLine, "Content-Type: {3}", Environment.NewLine, Environment.NewLine };
             string str = string.Concat(newLine);
-            object[] boundary = new object[] { this.Boundary, name, fileName, "application/octet-stream" };
+            object[] boundary = { Boundary, name, fileName, "application/octet-stream" };
             string str1 = string.Format(str, boundary);
             byte[] bytes = Encoding.UTF8.GetBytes(str1);
-            this.requestDataStream.Write(bytes, 0, (int)bytes.Length);
-            this.requestDataStream.Write(fileData, 0, fileSize);
+            _requestDataStream.Write(bytes, 0, bytes.Length);
+            _requestDataStream.Write(fileData, 0, fileSize);
             string newLine1 = Environment.NewLine;
             byte[] numArray = Encoding.UTF8.GetBytes(newLine1);
-            this.requestDataStream.Write(numArray, 0, (int)numArray.Length);
+            _requestDataStream.Write(numArray, 0, numArray.Length);
         }
 
         public void AddParameter(string name, string value) {
-            string[] newLine = new string[] { "--{0}", Environment.NewLine, "Content-Disposition: form-data; name=\"{1}\"", Environment.NewLine, Environment.NewLine, "{2}", Environment.NewLine };
+            string[] newLine = { "--{0}", Environment.NewLine, "Content-Disposition: form-data; name=\"{1}\"", Environment.NewLine, Environment.NewLine, "{2}", Environment.NewLine };
             string str = string.Concat(newLine);
-            object[] boundary = new object[] { this.Boundary, name, value };
+            object[] boundary = { Boundary, name, value };
             string str1 = string.Format(str, boundary);
             byte[] bytes = Encoding.UTF8.GetBytes(str1);
-            this.requestDataStream.Write(bytes, 0, (int)bytes.Length);
+            _requestDataStream.Write(bytes, 0, bytes.Length);
         }
 
         public string MakeRequestUri(string scheme, string hostName, string path) {
@@ -68,15 +68,15 @@ namespace MusicAnalyzer {
 
         public void PopulateWebRequestHeaders(WebRequest webRequest) {
             webRequest.Method = "POST";
-            webRequest.ContentType = string.Concat("multipart/form-data; boundary=", this.Boundary);
+            webRequest.ContentType = string.Concat("multipart/form-data; boundary=", Boundary);
         }
 
         public void WriteToRequestStream(Stream requestStream) {
-            string str = string.Concat("--", this.Boundary, "--");
+            string str = string.Concat("--", Boundary, "--");
             byte[] bytes = Encoding.UTF8.GetBytes(str);
-            this.requestDataStream.Write(bytes, 0, (int)bytes.Length);
-            byte[] array = this.requestDataStream.ToArray();
-            requestStream.Write(array, 0, (int)array.Length);
+            _requestDataStream.Write(bytes, 0, bytes.Length);
+            byte[] array = _requestDataStream.ToArray();
+            requestStream.Write(array, 0, array.Length);
         }
     }
 

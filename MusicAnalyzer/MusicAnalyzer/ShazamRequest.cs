@@ -1,27 +1,27 @@
 ﻿namespace MusicAnalyzer {
     public struct ShazamRequest {
-        public string hostname;
+        public string Hostname;
 
-        public string deviceid;
+        public string Deviceid;
 
-        public string service;
+        public string Service;
 
-        public string language;
+        public string Language;
 
-        public string model;
+        public string Model;
 
-        public string appid;
+        public string Appid;
 
-        public string token;
+        public string Token;
 
-        public char[] key;
+        public char[] Key;
 
-        public byte[] audioBuffer;
+        public byte[] AudioBuffer;
 
-        public string filename;
+        public string Filename;
 
-        public int art_width;
+        public int ArtWidth;
 
-        public ulong requestId;
+        public ulong RequestId;
     }
 }

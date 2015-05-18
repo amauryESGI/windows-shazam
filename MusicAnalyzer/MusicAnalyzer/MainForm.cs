@@ -1,27 +1,27 @@
 ﻿using System;
+using System.IO;
 using System.Text;
 using System.Windows.Forms;
-using System.IO;
-using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using SharedCoreLib.AudioProcessing;
 
 namespace MusicAnalyzer
 {
     public partial class MainForm : Form
     {
-        ShazamClient client;
-        Microphone microphone;
-        byte[] audioData;
-        int bytesRead = 0;
-        int counter = 10;
+        ShazamClient _client;
+        Microphone _microphone;
+        byte[] _audioData;
+        int _bytesRead;
+        int _counter = 10;
 
         public MainForm()
         {
             InitializeComponent();
-            client = new ShazamClient();
-            client.OnRecongnitionStateChanged += ShazamStateChanged;
-            microphone = Microphone.Default;
+            _client = new ShazamClient();
+            _client.OnRecongnitionStateChanged += ShazamStateChanged;
+            _microphone = Microphone.Default;
             if (Microphone.All.Count == 0)
             {
                 MessageBox.Show("There are no recording devices on this computer.", "Error");
@@ -30,18 +30,18 @@ namespace MusicAnalyzer
             FrameworkDispatcher.Update();
         }
 
-        public void ShazamStateChanged(ShazamRecognitionState State, ShazamResponse response)
+        public void ShazamStateChanged(ShazamRecognitionState state, ShazamResponse response)
         {
-            switch (State)
+            switch (state)
             {
                 case ShazamRecognitionState.Sending:
-                    this.statusLabel.Text = "Sending...";
+                    statusLabel.Text = "Sending...";
                     break;
                 case ShazamRecognitionState.Matching:
-                    this.statusLabel.Text = "Matching...";
+                    statusLabel.Text = "Matching...";
                     break;
                 case ShazamRecognitionState.Done:
-                    this.statusLabel.Text = "Click to Recognize";
+                    statusLabel.Text = "Click to Recognize";
                     button1.Enabled = true;
                     if (response.Tag != null)
                     {
@@ -56,22 +56,22 @@ namespace MusicAnalyzer
                 case ShazamRecognitionState.Failed:
                     button1.Enabled = true;
                     if (response.Exception.Message != null && response.Exception.Message != "")
-                        this.statusLabel.Text = "Failed! Message: " + response.Exception.Message;
+                        statusLabel.Text = "Failed! Message: " + response.Exception.Message;
                     else
-                        this.statusLabel.Text = "Failed!";
+                        statusLabel.Text = "Failed!";
                     break;
             }
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            audioData = new byte[Microphone.Default.GetSampleSizeInBytes(TimeSpan.FromSeconds(10.0))];
-            bytesRead = 0;
-            counter = 10;
-            microphone.Start();
+            _audioData = new byte[Microphone.Default.GetSampleSizeInBytes(TimeSpan.FromSeconds(10.0))];
+            _bytesRead = 0;
+            _counter = 10;
+            _microphone.Start();
             timer.Start();
             recordTimer.Start();
-            this.statusLabel.Text = "Listening... "+counter;
+            statusLabel.Text = "Listening... "+_counter;
             progressBar1.Style = ProgressBarStyle.Marquee;
             progressBar1.MarqueeAnimationSpeed = 10;
             button1.Enabled = false;
@@ -80,11 +80,11 @@ namespace MusicAnalyzer
         private void timer_Tick(object sender, EventArgs e)
         {
             timer.Stop();
-            ProcessPCMAudio(microphone.SampleRate,16,1);
-            string str = Encoding.UTF8.GetString(audioData);
-            microphone.Stop();
-            client.DoRecognition(audioData, MicrophoneRecordingOutputFormatType.PCM);
-            microphone.Stop();
+            ProcessPCMAudio(_microphone.SampleRate,16,1);
+            string str = Encoding.UTF8.GetString(_audioData);
+            _microphone.Stop();
+            _client.DoRecognition(_audioData, MicrophoneRecordingOutputFormatType.PCM);
+            _microphone.Stop();
             timer.Stop();
             recordTimer.Stop();
             progressBar1.Style = ProgressBarStyle.Continuous;
@@ -94,17 +94,17 @@ namespace MusicAnalyzer
 
         private void ProcessPCMAudio(int sampleRate, short numBitsPerSample, short numChennels)
         {
-                int length = audioData.Length;
+                int length = _audioData.Length;
                 WaveFile.WaveHeader waveHeader = new WaveFile.WaveHeader(length, sampleRate, numBitsPerSample, numChennels, false);
-                MemoryStream memoryStream = WaveFile.WriteWaveFile(waveHeader, audioData);
-                audioData = memoryStream.GetBuffer();
+                MemoryStream memoryStream = WaveFile.WriteWaveFile(waveHeader, _audioData);
+                _audioData = memoryStream.GetBuffer();
         }
 
         private void recordTimer_Tick(object sender, EventArgs e)
         {
-            counter--;
-            statusLabel.Text = "Listening... " + counter;
-            bytesRead += Microphone.Default.GetData(audioData, bytesRead, (audioData.Length - bytesRead));
+            _counter--;
+            statusLabel.Text = "Listening... " + _counter;
+            _bytesRead += Microphone.Default.GetData(_audioData, _bytesRead, (_audioData.Length - _bytesRead));
         }
     }
 }
